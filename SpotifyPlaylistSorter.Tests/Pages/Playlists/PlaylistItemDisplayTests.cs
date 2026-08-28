@@ -15,6 +15,7 @@ public sealed class PlaylistItemDisplayTests
             {
                 Album = new SpotifyAlbum
                 {
+                    Artists = [Artist("Album artist"), Artist("Guest album artist")],
                     Id = "album-id",
                     Images = [new SpotifyImage { Url = "https://image.test/album.jpg" }],
                     Name = "Album name",
@@ -27,6 +28,7 @@ public sealed class PlaylistItemDisplayTests
                     Artist("First artist")
                 ],
                 DurationMs = 185_000,
+                DiscNumber = 2,
                 Explicit = true,
                 ExternalUrls = new SpotifyExternalUrls
                 {
@@ -34,6 +36,7 @@ public sealed class PlaylistItemDisplayTests
                 },
                 Id = "track-id",
                 Name = "Track name",
+                TrackNumber = 4,
                 Type = "track",
                 Uri = "spotify:track:track-id"
             }
@@ -45,8 +48,12 @@ public sealed class PlaylistItemDisplayTests
         Assert.Equal("Track name", item.Name);
         Assert.Equal("First artist, Second artist", item.CreatorName);
         Assert.Equal("Album name", item.AlbumName);
+        Assert.Equal("Album artist", item.AlbumArtistName);
         Assert.Equal("https://image.test/album.jpg", item.AlbumImageUrl);
         Assert.Equal("3:05", item.Duration);
+        Assert.Equal(2, item.DiscNumber);
+        Assert.Equal(4, item.TrackNumber);
+        Assert.Equal(7, item.OriginalPosition);
         Assert.True(item.IsExplicit);
         Assert.True(item.IsAvailable);
     }

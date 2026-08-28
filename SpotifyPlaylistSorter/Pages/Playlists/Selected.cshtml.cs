@@ -17,6 +17,12 @@ public sealed class SelectedModel(
 
     public IReadOnlyList<PlaylistItemDisplay> Items { get; private set; } = [];
 
+    public IReadOnlyList<PlaylistItemDisplay> ProposedItems { get; private set; } = [];
+
+    public IReadOnlyList<string> ArtistNames { get; private set; } = [];
+
+    public int MovedItemCount => ProposedItems.Count(item => item.Position != item.OriginalPosition);
+
     public string? ErrorMessage { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(
@@ -46,6 +52,14 @@ public sealed class SelectedModel(
 
             Items = (await playlistService.GetPlaylistItemsAsync(playlistId, cancellationToken))
                 .Select((item, index) => PlaylistItemDisplay.Create(item, index + 1))
+                .ToArray();
+            ProposedItems = Items.Select(item => item with { }).ToArray();
+            ArtistNames = Items
+                .Where(item => item is { IsAvailable: true, ItemType: "track" })
+                .Select(item => item.AlbumArtistName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Select(name => name!)
+                .Distinct(StringComparer.CurrentCultureIgnoreCase)
                 .ToArray();
             return Page();
         }

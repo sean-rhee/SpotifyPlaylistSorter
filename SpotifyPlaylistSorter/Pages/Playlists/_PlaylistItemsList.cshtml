@@ -1,0 +1,71 @@
+@model SpotifyPlaylistSorter.Pages.Playlists.PlaylistItemsListDisplay
+
+<ol id="@Model.ElementId" class="track-list" aria-label="@Model.AriaLabel">
+    @foreach (var item in Model.Items)
+    {
+        <li class="track-row @(item.IsAvailable ? "" : "unavailable")"
+            data-original-position="@item.OriginalPosition"
+            data-artist-key="@item.AlbumArtistName"
+            data-album-name="@item.AlbumName"
+            data-disc-number="@item.DiscNumber"
+            data-track-number="@item.TrackNumber"
+            data-item-type="@item.ItemType">
+            <span class="track-position-block">
+                <span class="track-position" aria-label="Position @item.Position">@item.Position</span>
+                @if (Model.ShowOriginalPosition && item.Position != item.OriginalPosition)
+                {
+                    <span class="track-previous-position">from @item.OriginalPosition</span>
+                }
+            </span>
+            <span class="track-cover">
+                @if (!string.IsNullOrWhiteSpace(item.AlbumImageUrl))
+                {
+                    <img src="@item.AlbumImageUrl" alt="" loading="lazy" />
+                }
+                else
+                {
+                    <span aria-hidden="true">♪</span>
+                }
+            </span>
+            <span class="track-primary">
+                @if (!string.IsNullOrWhiteSpace(item.SpotifyUrl))
+                {
+                    <a href="@item.SpotifyUrl" target="_blank" rel="noopener noreferrer">@item.Name</a>
+                }
+                else
+                {
+                    <span class="track-name">@item.Name</span>
+                }
+                <span class="track-creator">@item.CreatorName</span>
+            </span>
+            <span class="track-album-details">
+                <span class="track-album">@(item.AlbumName ?? (item.ItemType == "episode" ? "Podcast" : "—"))</span>
+                @if (item.TrackNumber > 0)
+                {
+                    <span class="track-number">
+                        @if (item.DiscNumber > 1)
+                        {
+                            <text>Disc @item.DiscNumber · </text>
+                        }
+                        Track @item.TrackNumber
+                    </span>
+                }
+            </span>
+            <span class="track-flags">
+                @if (item.IsExplicit)
+                {
+                    <span class="item-flag" title="Explicit">E</span>
+                }
+                @if (item.IsLocal)
+                {
+                    <span class="item-flag local">Local</span>
+                }
+                @if (!item.IsAvailable)
+                {
+                    <span class="item-flag unavailable">Unavailable</span>
+                }
+            </span>
+            <span class="track-duration">@(item.Duration ?? "—")</span>
+        </li>
+    }
+</ol>

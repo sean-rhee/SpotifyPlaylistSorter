@@ -10,7 +10,7 @@
         <a class="back-link" asp-page="/Playlists/Index">← Choose a different playlist</a>
         <p class="eyebrow">Playlist selected</p>
         <h1>@Model.Playlist.Name</h1>
-        <p class="lead text-secondary">This is the playlist’s current order in Spotify. Nothing has been changed.</p>
+        <p class="lead text-secondary">Build a proposed order beside the playlist’s current Spotify order. Nothing changes in Spotify until you approve it.</p>
         <dl class="selection-details">
             <div>
                 <dt>Owner</dt>
@@ -36,17 +36,16 @@
     }
     else
     {
-        <section class="playlist-items" aria-labelledby="playlist-items-heading">
-            <div class="items-heading">
-                <div>
-                    <p class="eyebrow">Loaded from Spotify</p>
-                    <h2 id="playlist-items-heading">Current order</h2>
+        @if (Model.Items.Count == 0)
+        {
+            <section class="playlist-items" aria-labelledby="playlist-items-heading">
+                <div class="items-heading">
+                    <div>
+                        <p class="eyebrow">Loaded from Spotify</p>
+                        <h2 id="playlist-items-heading">Current order</h2>
+                    </div>
+                    <span class="count-pill">0</span>
                 </div>
-                <span class="count-pill">@Model.Items.Count</span>
-            </div>
-
-            @if (Model.Items.Count == 0)
-            {
                 <div class="items-empty-state">
                     <span aria-hidden="true">♪</span>
                     <div>
@@ -54,55 +53,103 @@
                         <p class="text-secondary mb-0">Add some items in Spotify, then return here and reload.</p>
                     </div>
                 </div>
-            }
-            else
-            {
-                <ol class="track-list" aria-label="Playlist items in their current order">
-                    @foreach (var item in Model.Items)
-                    {
-                        <li class="track-row @(item.IsAvailable ? "" : "unavailable")">
-                            <span class="track-position" aria-label="Position @item.Position">@item.Position</span>
-                            <div class="track-cover">
-                                @if (!string.IsNullOrWhiteSpace(item.AlbumImageUrl))
-                                {
-                                    <img src="@item.AlbumImageUrl" alt="" loading="lazy" />
-                                }
-                                else
-                                {
-                                    <span aria-hidden="true">♪</span>
-                                }
+            </section>
+        }
+        else
+        {
+            <section class="sort-controls" aria-labelledby="sort-controls-heading">
+                <div>
+                    <p class="eyebrow">Build your preview</p>
+                    <h2 id="sort-controls-heading">Choose how to organize the playlist</h2>
+                    <p class="order-description">Start with artist groups, arrange them however you like, then organize each artist’s albums.</p>
+                </div>
+                <div class="sort-actions">
+                    <button class="btn btn-spotify" type="button" data-bs-toggle="modal" data-bs-target="#artistOrderModal">
+                        Sort by artist
+                    </button>
+                    <button class="btn btn-outline-dark" id="sort-by-album" type="button">
+                        Sort by album
+                    </button>
+                    <button class="btn btn-link reset-preview" id="reset-preview" type="button">
+                        Reset preview
+                    </button>
+                </div>
+            </section>
+
+            <section class="playlist-comparison" aria-label="Current and proposed playlist order comparison">
+                <article class="playlist-items" aria-labelledby="current-order-heading">
+                    <div class="items-heading">
+                        <div>
+                            <p class="eyebrow">Loaded from Spotify</p>
+                            <h2 id="current-order-heading">Current order</h2>
+                            <p class="order-description">The playlist exactly as it is now.</p>
+                        </div>
+                        <span class="count-pill">@Model.Items.Count</span>
+                    </div>
+                    <partial name="_PlaylistItemsList" model="@(new PlaylistItemsListDisplay(Model.Items, "Playlist items in their current Spotify order"))" />
+                </article>
+
+                <article class="playlist-items proposed-order" aria-labelledby="proposed-order-heading">
+                    <div class="items-heading">
+                        <div>
+                            <p class="eyebrow">Preview only</p>
+                            <h2 id="proposed-order-heading">Proposed order</h2>
+                            <p class="order-description" id="proposed-order-description" aria-live="polite">Matches the current order until you choose a sort.</p>
+                        </div>
+                        <span class="count-pill" id="moved-item-count" title="@Model.MovedItemCount items would move">@Model.MovedItemCount moved</span>
+                    </div>
+                    <partial name="_PlaylistItemsList" model="@(new PlaylistItemsListDisplay(Model.ProposedItems, "Playlist items in their proposed order", ShowOriginalPosition: true, ElementId: "proposed-track-list"))" />
+                </article>
+            </section>
+
+            <div class="modal fade" id="artistOrderModal" tabindex="-1" aria-labelledby="artistOrderModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content artist-order-modal">
+                        <div class="modal-header">
+                            <div>
+                                <p class="eyebrow">Artist groups</p>
+                                <h2 class="modal-title fs-4" id="artistOrderModalLabel">Choose the artist order</h2>
                             </div>
-                            <div class="track-primary">
-                                @if (!string.IsNullOrWhiteSpace(item.SpotifyUrl))
-                                {
-                                    <a href="@item.SpotifyUrl" target="_blank" rel="noopener noreferrer">@item.Name</a>
-                                }
-                                else
-                                {
-                                    <span class="track-name">@item.Name</span>
-                                }
-                                <span class="track-creator">@item.CreatorName</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="artist-order-intro">
+                                <p>Type a position number or drag artists into the order you want. Tracks by the same album artist will stay together.</p>
+                                <button class="btn btn-sm btn-outline-dark" id="alphabetize-artists" type="button">Sort artists A–Z</button>
                             </div>
-                            <span class="track-album">@(item.AlbumName ?? (item.ItemType == "episode" ? "Podcast" : "—"))</span>
-                            <div class="track-flags">
-                                @if (item.IsExplicit)
+                            <ol class="artist-order-list" data-artist-order-list aria-label="Artists in proposed order">
+                                @for (var artistIndex = 0; artistIndex < Model.ArtistNames.Count; artistIndex++)
                                 {
-                                    <span class="item-flag" title="Explicit">E</span>
+                                    var artistName = Model.ArtistNames[artistIndex];
+                                    <li class="artist-order-item" draggable="true" data-artist-name="@artistName">
+                                        <span class="drag-handle" aria-hidden="true">⋮⋮</span>
+                                        <input class="artist-order-index"
+                                               type="number"
+                                               min="1"
+                                               max="@Model.ArtistNames.Count"
+                                               value="@(artistIndex + 1)"
+                                               inputmode="numeric"
+                                               aria-label="Sorting position for @artistName" />
+                                        <span class="artist-order-name">@artistName</span>
+                                        <span class="artist-order-buttons">
+                                            <button type="button" class="artist-move-button" data-move="up" aria-label="Move @artistName up">↑</button>
+                                            <button type="button" class="artist-move-button" data-move="down" aria-label="Move @artistName down">↓</button>
+                                        </span>
+                                    </li>
                                 }
-                                @if (item.IsLocal)
-                                {
-                                    <span class="item-flag local">Local</span>
-                                }
-                                @if (!item.IsAvailable)
-                                {
-                                    <span class="item-flag unavailable">Unavailable</span>
-                                }
-                            </div>
-                            <span class="track-duration">@(item.Duration ?? "—")</span>
-                        </li>
-                    }
-                </ol>
-            }
-        </section>
+                            </ol>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-spotify" id="apply-artist-order" data-bs-dismiss="modal">Apply artist order</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
     }
+}
+
+@section Scripts {
+    <script src="~/js/playlist-sorter.js" asp-append-version="true"></script>
 }

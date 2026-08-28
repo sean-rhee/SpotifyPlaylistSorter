@@ -25,6 +25,29 @@ public sealed class SelectedModelTests
         Assert.Equal("playlist-id", playlistService.RequestedPlaylistId);
         Assert.Equal([1, 2], page.Items.Select(item => item.Position));
         Assert.Equal(["first", "second"], page.Items.Select(item => item.Name));
+        Assert.Equal(["first", "second"], page.ProposedItems.Select(item => item.Name));
+        Assert.Equal([1, 2], page.ProposedItems.Select(item => item.Position));
+        Assert.Equal(0, page.MovedItemCount);
+    }
+
+    [Fact]
+    public async Task OnGetAsync_ListsDistinctAlbumArtistsInFirstAppearanceOrder()
+    {
+        var playlistService = new FakeSpotifyPlaylistService(
+            Playlist(ownerAccountId: "current-account"),
+            [
+                PlaylistItem("first", "Beta"),
+                PlaylistItem("second", "Alpha"),
+                PlaylistItem("third", "beta")
+            ]);
+        var page = new SelectedModel(
+            new FakeCurrentUserService(),
+            playlistService,
+            NullLogger<SelectedModel>.Instance);
+
+        await page.OnGetAsync("playlist-id", CancellationToken.None);
+
+        Assert.Equal(["Beta", "Alpha"], page.ArtistNames);
     }
 
     [Fact]
@@ -58,10 +81,27 @@ public sealed class SelectedModelTests
         Uri = "spotify:playlist:playlist-id"
     };
 
-    private static SpotifyPlaylistItem PlaylistItem(string name) => new()
+    private static SpotifyPlaylistItem PlaylistItem(string name, string? albumArtist = null) => new()
     {
         Item = new SpotifyPlayableItem
         {
+            Album = albumArtist is null
+                ? null
+                : new SpotifyAlbum
+                {
+                    Artists =
+                    [
+                        new SpotifyArtist
+                        {
+                            Id = albumArtist,
+                            Name = albumArtist,
+                            Uri = $"spotify:artist:{albumArtist}"
+                        }
+                    ],
+                    Id = $"album-{name}",
+                    Name = $"Album {name}",
+                    Uri = $"spotify:album:{name}"
+                },
             Id = name,
             Name = name,
             Type = "track",
