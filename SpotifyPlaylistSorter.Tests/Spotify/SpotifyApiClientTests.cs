@@ -2,6 +2,7 @@ using SpotifyPlaylistSorter.Spotify;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 
 namespace SpotifyPlaylistSorter.Tests.Spotify;
 
@@ -110,6 +111,80 @@ public sealed class SpotifyApiClientTests
     }
 
     [Fact]
+    public async Task CreatePlaylistAsync_UsesCurrentUserEndpointAndPrivatePayload()
+    {
+        var handler = new StubHttpMessageHandler((_, _) => JsonResponse(
+            """
+            {
+              "id": "created-id",
+              "name": "Sorted copy",
+              "snapshot_id": "snapshot-id",
+              "uri": "spotify:playlist:created-id",
+              "external_urls": { "spotify": "https://open.spotify.com/playlist/created-id" }
+            }
+            """,
+            HttpStatusCode.Created));
+        var client = CreateClient(handler);
+
+        var playlist = await client.CreatePlaylistAsync(
+            "token",
+            "Sorted copy",
+            isPublic: false,
+            "Created by the sorter");
+
+        Assert.Equal("created-id", playlist.Id);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal("https://api.spotify.test/v1/me/playlists", request.Uri.AbsoluteUri);
+        using var body = JsonDocument.Parse(request.Body!);
+        Assert.Equal("Sorted copy", body.RootElement.GetProperty("name").GetString());
+        Assert.False(body.RootElement.GetProperty("public").GetBoolean());
+        Assert.False(body.RootElement.GetProperty("collaborative").GetBoolean());
+    }
+
+    [Fact]
+    public async Task ReorderPlaylistItemsAsync_SendsSnapshotAwareRangePayload()
+    {
+        var handler = new StubHttpMessageHandler((_, _) => JsonResponse(
+            """{ "snapshot_id": "next-snapshot" }"""));
+        var client = CreateClient(handler);
+
+        var snapshot = await client.ReorderPlaylistItemsAsync(
+            "token",
+            "playlist/id",
+            rangeStart: 9,
+            insertBefore: 0,
+            rangeLength: 2,
+            snapshotId: "current-snapshot");
+
+        Assert.Equal("next-snapshot", snapshot.SnapshotId);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Put, request.Method);
+        Assert.Equal("https://api.spotify.test/v1/playlists/playlist%2Fid/items", request.Uri.AbsoluteUri);
+        using var body = JsonDocument.Parse(request.Body!);
+        Assert.Equal(9, body.RootElement.GetProperty("range_start").GetInt32());
+        Assert.Equal(0, body.RootElement.GetProperty("insert_before").GetInt32());
+        Assert.Equal(2, body.RootElement.GetProperty("range_length").GetInt32());
+        Assert.Equal("current-snapshot", body.RootElement.GetProperty("snapshot_id").GetString());
+    }
+
+    [Fact]
+    public async Task AddPlaylistItemsAsync_RejectsMoreThanOneHundredItems()
+    {
+        var handler = new StubHttpMessageHandler((_, _) =>
+            throw new InvalidOperationException("No request should be sent."));
+        var client = CreateClient(handler);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            client.AddPlaylistItemsAsync(
+                "token",
+                "playlist-id",
+                Enumerable.Repeat("spotify:track:id", 101).ToArray()));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task ApiError_ExposesSpotifyReasonAndRetryAfter()
     {
         var handler = new StubHttpMessageHandler((_, _) =>
@@ -183,7 +258,8 @@ public sealed class SpotifyApiClientTests
                 request.Method,
                 request.RequestUri ?? throw new InvalidOperationException("Request URI was missing."),
                 request.Headers.Authorization?.Scheme,
-                request.Headers.Authorization?.Parameter);
+                request.Headers.Authorization?.Parameter,
+                request.Content?.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult());
             Requests.Add(capturedRequest);
 
             return Task.FromResult(responseFactory(capturedRequest, cancellationToken));
@@ -194,5 +270,6 @@ public sealed class SpotifyApiClientTests
         HttpMethod Method,
         Uri Uri,
         string? AuthorizationScheme,
-        string? AuthorizationParameter);
+        string? AuthorizationParameter,
+        string? Body);
 }

@@ -43,6 +43,60 @@ public sealed class SpotifyPlaylistServiceTests
         Assert.Equal([0, 1], apiClient.ItemOffsets);
     }
 
+    [Fact]
+    public async Task CreateSortedCopyAsync_CreatesPrivatePlaylistAndAddsItemsInBatches()
+    {
+        var apiClient = new FakeSpotifyApiClient();
+        var service = new SpotifyPlaylistService(apiClient, new FakeSpotifyTokenService());
+        var itemUris = Enumerable.Range(1, 205)
+            .Select(index => $"spotify:track:{index}")
+            .ToArray();
+
+        var playlist = await service.CreateSortedCopyAsync(
+            "Sorted copy",
+            "Created by the sorter",
+            itemUris);
+
+        Assert.Equal("created-playlist", playlist.Id);
+        Assert.Equal("Sorted copy", apiClient.CreatedPlaylistName);
+        Assert.False(apiClient.CreatedPlaylistIsPublic);
+        Assert.Equal([100, 100, 5], apiClient.AddedItemBatches.Select(batch => batch.Count));
+        Assert.Equal(itemUris, apiClient.AddedItemBatches.SelectMany(batch => batch));
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistOrderAsync_MovesMatchingContiguousRangesAndCarriesSnapshotForward()
+    {
+        var apiClient = new FakeSpotifyApiClient();
+        var service = new SpotifyPlaylistService(apiClient, new FakeSpotifyTokenService());
+
+        await service.UpdatePlaylistOrderAsync(
+            "playlist-id",
+            "snapshot-0",
+            [2, 3, 1, 5, 4]);
+
+        Assert.Equal(
+            [
+                new ReorderCall(1, 0, 2, "snapshot-0"),
+                new ReorderCall(4, 3, 1, "snapshot-1")
+            ],
+            apiClient.ReorderCalls);
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistOrderAsync_RejectsIncompletePermutationBeforeCallingSpotify()
+    {
+        var apiClient = new FakeSpotifyApiClient();
+        var service = new SpotifyPlaylistService(apiClient, new FakeSpotifyTokenService());
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdatePlaylistOrderAsync(
+            "playlist-id",
+            "snapshot-id",
+            [2, 2]));
+
+        Assert.Empty(apiClient.ReorderCalls);
+    }
+
     private static SpotifyPlaylistSummary Playlist(string id) => new()
     {
         Id = id,
@@ -101,6 +155,14 @@ public sealed class SpotifyPlaylistServiceTests
 
         public List<int> ItemOffsets { get; } = [];
 
+        public string? CreatedPlaylistName { get; private set; }
+
+        public bool CreatedPlaylistIsPublic { get; private set; }
+
+        public List<IReadOnlyList<string>> AddedItemBatches { get; } = [];
+
+        public List<ReorderCall> ReorderCalls { get; } = [];
+
         public Task<SpotifyUserProfile> GetCurrentUserProfileAsync(
             string accessToken,
             CancellationToken cancellationToken = default) =>
@@ -126,7 +188,57 @@ public sealed class SpotifyPlaylistServiceTests
             ItemOffsets.Add(offset);
             return Task.FromResult(ItemPages[_itemPageIndex++]);
         }
+
+        public Task<SpotifyPlaylistSummary> CreatePlaylistAsync(
+            string accessToken,
+            string name,
+            bool isPublic,
+            string? description,
+            CancellationToken cancellationToken = default)
+        {
+            CreatedPlaylistName = name;
+            CreatedPlaylistIsPublic = isPublic;
+            return Task.FromResult(Playlist("created-playlist") with
+            {
+                Name = name
+            });
+        }
+
+        public Task<SpotifySnapshot> AddPlaylistItemsAsync(
+            string accessToken,
+            string playlistId,
+            IReadOnlyList<string> itemUris,
+            CancellationToken cancellationToken = default)
+        {
+            AddedItemBatches.Add(itemUris.ToArray());
+            return Task.FromResult(new SpotifySnapshot
+            {
+                SnapshotId = $"add-snapshot-{AddedItemBatches.Count}"
+            });
+        }
+
+        public Task<SpotifySnapshot> ReorderPlaylistItemsAsync(
+            string accessToken,
+            string playlistId,
+            int rangeStart,
+            int insertBefore,
+            int rangeLength,
+            string snapshotId,
+            CancellationToken cancellationToken = default)
+        {
+            ReorderCalls.Add(new ReorderCall(rangeStart, insertBefore, rangeLength, snapshotId));
+            return Task.FromResult(new SpotifySnapshot
+            {
+                SnapshotId = $"snapshot-{ReorderCalls.Count}"
+            });
+        }
     }
+
+    private sealed record ReorderCall(
+        int RangeStart,
+        int InsertBefore,
+        int RangeLength,
+        string SnapshotId);
 
     private sealed class FakeSpotifyTokenService : ISpotifyTokenService
     {

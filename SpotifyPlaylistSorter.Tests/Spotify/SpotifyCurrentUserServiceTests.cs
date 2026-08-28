@@ -61,5 +61,30 @@ public sealed class SpotifyCurrentUserServiceTests
             int offset = 0,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public Task<SpotifyPlaylistSummary> CreatePlaylistAsync(
+            string accessToken,
+            string name,
+            bool isPublic,
+            string? description,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<SpotifySnapshot> AddPlaylistItemsAsync(
+            string accessToken,
+            string playlistId,
+            IReadOnlyList<string> itemUris,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<SpotifySnapshot> ReorderPlaylistItemsAsync(
+            string accessToken,
+            string playlistId,
+            int rangeStart,
+            int insertBefore,
+            int rangeLength,
+            string snapshotId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

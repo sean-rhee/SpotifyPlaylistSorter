@@ -68,6 +68,101 @@ public sealed class SelectedModelTests
         Assert.Empty(page.Items);
     }
 
+    [Fact]
+    public async Task OnPostUpdateOriginalAsync_AppliesVerifiedProposedOrder()
+    {
+        var playlistService = new FakeSpotifyPlaylistService(
+            Playlist(ownerAccountId: "current-account"),
+            [PlaylistItem("first"), PlaylistItem("second")]);
+        var page = new SelectedModel(
+            new FakeCurrentUserService(),
+            playlistService,
+            NullLogger<SelectedModel>.Instance);
+
+        var result = await page.OnPostUpdateOriginalAsync(
+            "playlist-id",
+            "2,1",
+            "snapshot-id",
+            CancellationToken.None);
+
+        Assert.IsType<RedirectToPageResult>(result);
+        Assert.Equal("playlist-id", playlistService.UpdatedPlaylistId);
+        Assert.Equal("snapshot-id", playlistService.UpdatedSnapshotId);
+        Assert.Equal([2, 1], playlistService.UpdatedOrder);
+    }
+
+    [Fact]
+    public async Task OnPostUpdateOriginalAsync_RejectsPreviewFromOlderSnapshot()
+    {
+        var playlistService = new FakeSpotifyPlaylistService(
+            Playlist(ownerAccountId: "current-account"),
+            [PlaylistItem("first"), PlaylistItem("second")]);
+        var page = new SelectedModel(
+            new FakeCurrentUserService(),
+            playlistService,
+            NullLogger<SelectedModel>.Instance);
+
+        var result = await page.OnPostUpdateOriginalAsync(
+            "playlist-id",
+            "2,1",
+            "older-snapshot",
+            CancellationToken.None);
+
+        Assert.IsType<PageResult>(result);
+        Assert.Null(playlistService.UpdatedPlaylistId);
+        Assert.Contains("changed in Spotify", page.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task OnPostCreateCopyAsync_UsesProposedItemOrder()
+    {
+        var playlistService = new FakeSpotifyPlaylistService(
+            Playlist(ownerAccountId: "current-account"),
+            [PlaylistItem("first"), PlaylistItem("second")]);
+        var page = new SelectedModel(
+            new FakeCurrentUserService(),
+            playlistService,
+            NullLogger<SelectedModel>.Instance);
+
+        var result = await page.OnPostCreateCopyAsync(
+            "playlist-id",
+            "2,1",
+            "snapshot-id",
+            "My sorted copy",
+            CancellationToken.None);
+
+        Assert.IsType<RedirectToPageResult>(result);
+        Assert.Equal("My sorted copy", playlistService.CreatedCopyName);
+        Assert.Equal(
+            ["spotify:track:second", "spotify:track:first"],
+            playlistService.CreatedCopyItemUris);
+    }
+
+    [Fact]
+    public async Task OnPostCreateCopyAsync_OmitsLocalFilesAndReportsThem()
+    {
+        var playlistService = new FakeSpotifyPlaylistService(
+            Playlist(ownerAccountId: "current-account"),
+            [PlaylistItem("local", isLocal: true), PlaylistItem("spotify")]);
+        var page = new SelectedModel(
+            new FakeCurrentUserService(),
+            playlistService,
+            NullLogger<SelectedModel>.Instance);
+
+        var result = await page.OnPostCreateCopyAsync(
+            "playlist-id",
+            "2,1",
+            "snapshot-id",
+            "Copy with local file",
+            CancellationToken.None);
+
+        Assert.IsType<RedirectToPageResult>(result);
+        Assert.True(page.CanCreateCopy);
+        Assert.Equal(1, page.LocalItemCount);
+        Assert.Equal(["spotify:track:spotify"], playlistService.CreatedCopyItemUris);
+        Assert.Contains("without 1 local file", page.SuccessMessage);
+    }
+
     private static SpotifyPlaylistSummary Playlist(string ownerAccountId) => new()
     {
         Id = "playlist-id",
@@ -81,8 +176,12 @@ public sealed class SelectedModelTests
         Uri = "spotify:playlist:playlist-id"
     };
 
-    private static SpotifyPlaylistItem PlaylistItem(string name, string? albumArtist = null) => new()
+    private static SpotifyPlaylistItem PlaylistItem(
+        string name,
+        string? albumArtist = null,
+        bool isLocal = false) => new()
     {
+        IsLocal = isLocal,
         Item = new SpotifyPlayableItem
         {
             Album = albumArtist is null
@@ -105,7 +204,7 @@ public sealed class SelectedModelTests
             Id = name,
             Name = name,
             Type = "track",
-            Uri = $"spotify:track:{name}"
+            Uri = isLocal ? $"spotify:local:{name}" : $"spotify:track:{name}"
         }
     };
 
@@ -127,6 +226,16 @@ public sealed class SelectedModelTests
     {
         public string? RequestedPlaylistId { get; private set; }
 
+        public string? UpdatedPlaylistId { get; private set; }
+
+        public string? UpdatedSnapshotId { get; private set; }
+
+        public IReadOnlyList<int>? UpdatedOrder { get; private set; }
+
+        public string? CreatedCopyName { get; private set; }
+
+        public IReadOnlyList<string>? CreatedCopyItemUris { get; private set; }
+
         public Task<IReadOnlyList<SpotifyPlaylistSummary>> GetCurrentUserPlaylistsAsync(
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<SpotifyPlaylistSummary>>([playlist]);
@@ -137,6 +246,37 @@ public sealed class SelectedModelTests
         {
             RequestedPlaylistId = playlistId;
             return Task.FromResult(items);
+        }
+
+        public Task<SpotifyPlaylistSummary> CreateSortedCopyAsync(
+            string name,
+            string description,
+            IReadOnlyList<string> itemUris,
+            CancellationToken cancellationToken = default)
+        {
+            CreatedCopyName = name;
+            CreatedCopyItemUris = itemUris.ToArray();
+            return Task.FromResult(Playlist("current-account") with
+            {
+                Id = "created-playlist-id",
+                Name = name,
+                ExternalUrls = new SpotifyExternalUrls
+                {
+                    Spotify = "https://open.spotify.com/playlist/created-playlist-id"
+                }
+            });
+        }
+
+        public Task UpdatePlaylistOrderAsync(
+            string playlistId,
+            string snapshotId,
+            IReadOnlyList<int> orderedOriginalPositions,
+            CancellationToken cancellationToken = default)
+        {
+            UpdatedPlaylistId = playlistId;
+            UpdatedSnapshotId = snapshotId;
+            UpdatedOrder = orderedOriginalPositions.ToArray();
+            return Task.CompletedTask;
         }
     }
 }

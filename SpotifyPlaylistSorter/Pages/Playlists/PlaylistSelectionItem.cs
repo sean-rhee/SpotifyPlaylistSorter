@@ -8,6 +8,8 @@ public sealed record PlaylistSelectionItem
 
     public required string Name { get; init; }
 
+    public required string SnapshotId { get; init; }
+
     public required string OwnerName { get; init; }
 
     public string? CoverImageUrl { get; init; }
@@ -41,6 +43,7 @@ public sealed record PlaylistSelectionItem
         {
             Id = playlist.Id,
             Name = playlist.Name,
+            SnapshotId = playlist.SnapshotId,
             OwnerName = playlist.Owner?.DisplayName ?? "Unknown owner",
             CoverImageUrl = playlist.Images.FirstOrDefault()?.Url,
             SpotifyUrl = playlist.ExternalUrls.Spotify,

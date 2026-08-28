@@ -156,3 +156,8 @@ public sealed record SpotifyImage
 
     public int? Width { get; init; }
 }
+
+public sealed record SpotifySnapshot
+{
+    public required string SnapshotId { get; init; }
+}

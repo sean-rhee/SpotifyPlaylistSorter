@@ -53,6 +53,82 @@ public sealed class SpotifyApiClient(HttpClient httpClient) : ISpotifyApiClient
             cancellationToken);
     }
 
+    public Task<SpotifyPlaylistSummary> CreatePlaylistAsync(
+        string accessToken,
+        string name,
+        bool isPublic,
+        string? description,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        return SendJsonAsync<SpotifyPlaylistSummary>(
+            HttpMethod.Post,
+            "me/playlists",
+            accessToken,
+            new
+            {
+                name,
+                @public = isPublic,
+                collaborative = false,
+                description
+            },
+            cancellationToken);
+    }
+
+    public Task<SpotifySnapshot> AddPlaylistItemsAsync(
+        string accessToken,
+        string playlistId,
+        IReadOnlyList<string> itemUris,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(playlistId);
+        ArgumentNullException.ThrowIfNull(itemUris);
+        if (itemUris.Count is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(itemUris),
+                itemUris.Count,
+                "Spotify accepts between 1 and 100 playlist items per request.");
+        }
+
+        return SendJsonAsync<SpotifySnapshot>(
+            HttpMethod.Post,
+            $"playlists/{Uri.EscapeDataString(playlistId)}/items",
+            accessToken,
+            new { uris = itemUris },
+            cancellationToken);
+    }
+
+    public Task<SpotifySnapshot> ReorderPlaylistItemsAsync(
+        string accessToken,
+        string playlistId,
+        int rangeStart,
+        int insertBefore,
+        int rangeLength,
+        string snapshotId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(playlistId);
+        ArgumentOutOfRangeException.ThrowIfNegative(rangeStart);
+        ArgumentOutOfRangeException.ThrowIfNegative(insertBefore);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(rangeLength);
+        ArgumentException.ThrowIfNullOrWhiteSpace(snapshotId);
+
+        return SendJsonAsync<SpotifySnapshot>(
+            HttpMethod.Put,
+            $"playlists/{Uri.EscapeDataString(playlistId)}/items",
+            accessToken,
+            new
+            {
+                rangeStart,
+                insertBefore,
+                rangeLength,
+                snapshotId
+            },
+            cancellationToken);
+    }
+
     private async Task<T> GetAsync<T>(
         string requestUri,
         string accessToken,
@@ -77,6 +153,46 @@ public sealed class SpotifyApiClient(HttpClient httpClient) : ISpotifyApiClient
         {
             var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
 
+            return result ?? throw new JsonException("Spotify returned an empty JSON response.");
+        }
+        catch (JsonException exception)
+        {
+            throw new SpotifyApiException(
+                response.StatusCode,
+                "Spotify returned a response that the application could not understand.",
+                reason: "INVALID_RESPONSE",
+                retryAfter: null,
+                responseBody: string.Empty,
+                exception);
+        }
+    }
+
+    private async Task<T> SendJsonAsync<T>(
+        HttpMethod method,
+        string requestUri,
+        string accessToken,
+        object body,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(accessToken);
+
+        using var request = new HttpRequestMessage(method, requestUri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        request.Content = JsonContent.Create(body, options: JsonOptions);
+
+        using var response = await httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await CreateApiExceptionAsync(response, cancellationToken);
+        }
+
+        try
+        {
+            var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
             return result ?? throw new JsonException("Spotify returned an empty JSON response.");
         }
         catch (JsonException exception)

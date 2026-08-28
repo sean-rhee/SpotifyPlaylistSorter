@@ -27,6 +27,17 @@
         </dl>
     </section>
 
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="alert alert-success d-flex flex-wrap justify-content-between align-items-center gap-2" role="status">
+            <span>@Model.SuccessMessage</span>
+            @if (!string.IsNullOrWhiteSpace(Model.SuccessSpotifyUrl))
+            {
+                <a class="alert-link" href="@Model.SuccessSpotifyUrl" target="_blank" rel="noopener noreferrer">Open in Spotify</a>
+            }
+        </div>
+    }
+
     @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
     {
         <div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
@@ -102,6 +113,66 @@
                 </article>
             </section>
 
+            <section class="save-order-panel" aria-labelledby="save-order-heading">
+                <div class="save-order-heading">
+                    <div>
+                        <p class="eyebrow">Save to Spotify</p>
+                        <h2 id="save-order-heading">Choose what happens to this playlist</h2>
+                        <p class="order-description">Creating a private copy is the safest option. Updating the original changes its order for everyone who uses it.</p>
+                    </div>
+                    <span class="save-order-status" id="save-order-status" aria-live="polite">Choose a sort to enable saving.</span>
+                </div>
+                <div class="save-order-options">
+                    <form class="save-order-option save-order-copy"
+                          method="post"
+                          asp-page-handler="CreateCopy"
+                          asp-route-playlistId="@Model.Playlist.Id">
+                        <input type="hidden" name="snapshotId" value="@Model.Playlist.SnapshotId" />
+                        <input type="hidden" name="orderedPositions" value="" data-order-input />
+                        <div>
+                            <h3>Create a sorted copy</h3>
+                            <p>Leaves “@Model.Playlist.Name” untouched and creates a new private playlist.</p>
+                        </div>
+                        <label class="form-label" for="copy-name">New playlist name</label>
+                        <input class="form-control"
+                               id="copy-name"
+                               name="copyName"
+                               value="@($"{Model.Playlist.Name} (Sorted)")"
+                               maxlength="100"
+                               required />
+                        <button class="btn btn-spotify save-order-button"
+                                type="submit"
+                                disabled
+                                data-save-supported="@(Model.CanCreateCopy ? "true" : "false")">
+                            Create sorted copy
+                        </button>
+                        @if (Model.LocalItemCount > 0)
+                        {
+                            <p class="save-order-note">Spotify cannot copy local files through its API. The new playlist will omit @Model.LocalItemCount local @(Model.LocalItemCount == 1 ? "file" : "files"); the original playlist will not be affected.</p>
+                        }
+                        @if (!Model.CanCreateCopy)
+                        {
+                            <p class="save-order-note">Copying is unavailable because this playlist also contains an unavailable Spotify item.</p>
+                        }
+                    </form>
+
+                    <div class="save-order-option save-order-original">
+                        <div>
+                            <h3>Update the original</h3>
+                            <p>Applies the proposed order directly to “@Model.Playlist.Name”.</p>
+                        </div>
+                        <button class="btn btn-outline-dark save-order-button"
+                                type="button"
+                                data-bs-toggle="modal"
+                                data-bs-target="#updateOriginalModal"
+                                data-save-supported="true"
+                                disabled>
+                            Update original playlist
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <div class="modal fade" id="artistOrderModal" tabindex="-1" aria-labelledby="artistOrderModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content artist-order-modal">
@@ -155,6 +226,34 @@
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                             <button type="button" class="btn btn-spotify" id="apply-artist-order" data-bs-dismiss="modal">Apply artist order</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="updateOriginalModal" tabindex="-1" aria-labelledby="updateOriginalModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form method="post"
+                              asp-page-handler="UpdateOriginal"
+                              asp-route-playlistId="@Model.Playlist.Id">
+                            <input type="hidden" name="snapshotId" value="@Model.Playlist.SnapshotId" />
+                            <input type="hidden" name="orderedPositions" value="" data-order-input />
+                            <div class="modal-header">
+                                <div>
+                                    <p class="eyebrow">Confirm Spotify update</p>
+                                    <h2 class="modal-title fs-4" id="updateOriginalModalLabel">Update the original playlist?</h2>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>This will change the order of <strong>“@Model.Playlist.Name”</strong> in Spotify. The playlist’s items will stay the same.</p>
+                                <p class="text-secondary mb-0">If Spotify changed since this preview was built, the app will stop and ask you to reload instead of applying a stale order.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-dark">Yes, update the original</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

@@ -5,6 +5,9 @@
     const artistFindStatus = document.querySelector("#artist-find-status");
     const movedItemCount = document.querySelector("#moved-item-count");
     const proposedDescription = document.querySelector("#proposed-order-description");
+    const orderInputs = document.querySelectorAll("[data-order-input]");
+    const saveButtons = document.querySelectorAll(".save-order-button");
+    const saveStatus = document.querySelector("#save-order-status");
 
     if (!proposedList || !artistList || !movedItemCount || !proposedDescription) {
         return;
@@ -22,6 +25,22 @@
     const originalPosition = row => Number.parseInt(row.dataset.originalPosition, 10);
     const artistRanks = () => new Map(
         appliedArtistOrder.map((name, index) => [normalize(name), index]));
+    const syncSaveControls = moved => {
+        const order = Array.from(proposedList.children)
+            .map(row => originalPosition(row))
+            .join(",");
+        orderInputs.forEach(input => {
+            input.value = order;
+        });
+        saveButtons.forEach(button => {
+            button.disabled = moved === 0 || button.dataset.saveSupported !== "true";
+        });
+        if (saveStatus) {
+            saveStatus.textContent = moved === 0
+                ? "Choose a sort to enable saving."
+                : `${moved} ${moved === 1 ? "item" : "items"} will move.`;
+        }
+    };
     const refreshArtistIndices = () => {
         const artistItems = Array.from(artistList.children);
         artistItems.forEach((item, index) => {
@@ -106,6 +125,7 @@
         movedItemCount.textContent = `${moved} moved`;
         movedItemCount.title = `${moved} items would move`;
         proposedDescription.textContent = message;
+        syncSaveControls(moved);
     };
 
     const reorderProposedRows = (compare, message) => {
@@ -307,4 +327,6 @@
             (left, right) => originalPosition(left) - originalPosition(right),
             "Matches the current order until you choose a sort.");
     });
+
+    syncSaveControls(0);
 })();

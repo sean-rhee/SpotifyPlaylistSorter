@@ -22,6 +22,8 @@ public sealed record PlaylistItemDisplay
 
     public string? SpotifyUrl { get; init; }
 
+    public string? SpotifyUri { get; init; }
+
     public string? Duration { get; init; }
 
     public int DiscNumber { get; init; }
@@ -37,6 +39,12 @@ public sealed record PlaylistItemDisplay
     public bool IsAvailable { get; init; }
 
     public string ItemType { get; init; } = "unknown";
+
+    public bool CanCopy =>
+        !IsLocal &&
+        IsAvailable &&
+        !string.IsNullOrWhiteSpace(SpotifyUri) &&
+        ItemType is "track" or "episode";
 
     public static PlaylistItemDisplay Create(SpotifyPlaylistItem playlistItem, int position)
     {
@@ -92,6 +100,7 @@ public sealed record PlaylistItemDisplay
             AlbumReleaseDate = item.Album?.ReleaseDate,
             AlbumImageUrl = item.Album?.Images.FirstOrDefault()?.Url,
             SpotifyUrl = item.ExternalUrls.Spotify,
+            SpotifyUri = item.Uri,
             Duration = FormatDuration(item.DurationMs),
             DiscNumber = item.DiscNumber,
             TrackNumber = item.TrackNumber,
