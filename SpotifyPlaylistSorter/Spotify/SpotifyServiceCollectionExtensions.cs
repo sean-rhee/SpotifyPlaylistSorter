@@ -32,6 +32,7 @@ public static class SpotifyServiceCollectionExtensions
         });
 
         services.AddScoped<ISpotifyPlaylistService, SpotifyPlaylistService>();
+        services.AddScoped<ISpotifyCurrentUserService, SpotifyCurrentUserService>();
 
         return services;
     }

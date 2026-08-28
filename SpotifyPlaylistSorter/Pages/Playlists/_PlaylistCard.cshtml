@@ -1,0 +1,49 @@
+@model SpotifyPlaylistSorter.Pages.Playlists.PlaylistSelectionItem
+
+<article class="playlist-card @(Model.CanSort ? "" : "view-only")">
+    <div class="playlist-cover">
+        @if (!string.IsNullOrWhiteSpace(Model.CoverImageUrl))
+        {
+            <img src="@Model.CoverImageUrl" alt="Cover art for @Model.Name" loading="lazy" />
+        }
+        else
+        {
+            <span aria-hidden="true">♪</span>
+        }
+    </div>
+
+    <div class="playlist-card-body">
+        <div class="playlist-card-title-row">
+            <h3 title="@Model.Name">@Model.Name</h3>
+            <span class="access-badge @(Model.CanSort ? "editable" : "")">@Model.AccessLabel</span>
+        </div>
+        <p class="playlist-owner">By @Model.OwnerName</p>
+        <div class="playlist-metadata">
+            @if (Model.ItemCount is { } itemCount)
+            {
+                <span>@itemCount item@(itemCount == 1 ? "" : "s")</span>
+            }
+            <span>@(Model.IsPublic ? "Public" : "Private")</span>
+        </div>
+
+        <div class="playlist-actions">
+            @if (Model.CanSort)
+            {
+                <a class="btn btn-spotify" asp-page="/Playlists/Selected" asp-route-playlistId="@Model.Id">
+                    Select playlist
+                </a>
+            }
+            else
+            {
+                <button class="btn btn-secondary" type="button" disabled>Not editable</button>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Model.SpotifyUrl))
+            {
+                <a class="spotify-link" href="@Model.SpotifyUrl" target="_blank" rel="noopener noreferrer">
+                    Open in Spotify
+                </a>
+            }
+        </div>
+    </div>
+</article>

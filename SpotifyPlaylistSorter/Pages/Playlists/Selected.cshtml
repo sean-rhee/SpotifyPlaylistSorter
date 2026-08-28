@@ -1,0 +1,108 @@
+@page "/playlists/{playlistId}"
+@model SpotifyPlaylistSorter.Pages.Playlists.SelectedModel
+@{
+    ViewData["Title"] = Model.Playlist is null ? "Playlist selected" : Model.Playlist.Name;
+}
+
+@if (Model.Playlist is not null)
+{
+    <section class="selection-confirmation">
+        <a class="back-link" asp-page="/Playlists/Index">← Choose a different playlist</a>
+        <p class="eyebrow">Playlist selected</p>
+        <h1>@Model.Playlist.Name</h1>
+        <p class="lead text-secondary">This is the playlist’s current order in Spotify. Nothing has been changed.</p>
+        <dl class="selection-details">
+            <div>
+                <dt>Owner</dt>
+                <dd>@Model.Playlist.OwnerName</dd>
+            </div>
+            <div>
+                <dt>Items</dt>
+                <dd>@Model.Items.Count</dd>
+            </div>
+            <div>
+                <dt>Access</dt>
+                <dd>@Model.Playlist.AccessLabel</dd>
+            </div>
+        </dl>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
+            <span>@Model.ErrorMessage</span>
+            <a class="alert-link" asp-page="/Playlists/Selected" asp-route-playlistId="@Model.Playlist.Id">Try again</a>
+        </div>
+    }
+    else
+    {
+        <section class="playlist-items" aria-labelledby="playlist-items-heading">
+            <div class="items-heading">
+                <div>
+                    <p class="eyebrow">Loaded from Spotify</p>
+                    <h2 id="playlist-items-heading">Current order</h2>
+                </div>
+                <span class="count-pill">@Model.Items.Count</span>
+            </div>
+
+            @if (Model.Items.Count == 0)
+            {
+                <div class="items-empty-state">
+                    <span aria-hidden="true">♪</span>
+                    <div>
+                        <h3>This playlist is empty</h3>
+                        <p class="text-secondary mb-0">Add some items in Spotify, then return here and reload.</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <ol class="track-list" aria-label="Playlist items in their current order">
+                    @foreach (var item in Model.Items)
+                    {
+                        <li class="track-row @(item.IsAvailable ? "" : "unavailable")">
+                            <span class="track-position" aria-label="Position @item.Position">@item.Position</span>
+                            <div class="track-cover">
+                                @if (!string.IsNullOrWhiteSpace(item.AlbumImageUrl))
+                                {
+                                    <img src="@item.AlbumImageUrl" alt="" loading="lazy" />
+                                }
+                                else
+                                {
+                                    <span aria-hidden="true">♪</span>
+                                }
+                            </div>
+                            <div class="track-primary">
+                                @if (!string.IsNullOrWhiteSpace(item.SpotifyUrl))
+                                {
+                                    <a href="@item.SpotifyUrl" target="_blank" rel="noopener noreferrer">@item.Name</a>
+                                }
+                                else
+                                {
+                                    <span class="track-name">@item.Name</span>
+                                }
+                                <span class="track-creator">@item.CreatorName</span>
+                            </div>
+                            <span class="track-album">@(item.AlbumName ?? (item.ItemType == "episode" ? "Podcast" : "—"))</span>
+                            <div class="track-flags">
+                                @if (item.IsExplicit)
+                                {
+                                    <span class="item-flag" title="Explicit">E</span>
+                                }
+                                @if (item.IsLocal)
+                                {
+                                    <span class="item-flag local">Local</span>
+                                }
+                                @if (!item.IsAvailable)
+                                {
+                                    <span class="item-flag unavailable">Unavailable</span>
+                                }
+                            </div>
+                            <span class="track-duration">@(item.Duration ?? "—")</span>
+                        </li>
+                    }
+                </ol>
+            }
+        </section>
+    }
+}

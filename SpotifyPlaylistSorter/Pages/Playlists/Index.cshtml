@@ -1,0 +1,84 @@
+@page "/playlists"
+@model SpotifyPlaylistSorter.Pages.Playlists.IndexModel
+@{
+    ViewData["Title"] = "Choose a playlist";
+    var editablePlaylists = Model.Playlists.Where(playlist => playlist.CanSort).ToArray();
+    var viewOnlyPlaylists = Model.Playlists.Where(playlist => !playlist.CanSort).ToArray();
+}
+
+<section class="playlist-heading">
+    <div>
+        <p class="eyebrow">Spotify library</p>
+        <h1>Choose a playlist to sort</h1>
+        <p class="text-secondary mb-0">
+            @if (!string.IsNullOrWhiteSpace(Model.DisplayName))
+            {
+                <text>@Model.DisplayName, you have @Model.EditableCount playlist@(Model.EditableCount == 1 ? "" : "s") ready to organize.</text>
+            }
+            else
+            {
+                <text>Select one of your editable playlists to continue.</text>
+            }
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Playlists/Index">Refresh</a>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
+        <span>@Model.ErrorMessage</span>
+        <a class="alert-link" asp-page="/Playlists/Index">Try again</a>
+    </div>
+}
+else if (Model.Playlists.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon" aria-hidden="true">♪</div>
+        <h2>No playlists found</h2>
+        <p class="text-secondary">Create a playlist in Spotify, then return here and refresh.</p>
+        <a class="btn btn-dark" href="https://open.spotify.com/collection/playlists" target="_blank" rel="noopener noreferrer">
+            Open Spotify
+        </a>
+    </div>
+}
+else
+{
+    <section aria-labelledby="editable-playlists-heading">
+        <div class="section-heading">
+            <h2 id="editable-playlists-heading">Ready to sort</h2>
+            <span class="count-pill">@editablePlaylists.Length</span>
+        </div>
+
+        @if (editablePlaylists.Length == 0)
+        {
+            <p class="text-secondary">None of these playlists can be changed by your account.</p>
+        }
+        else
+        {
+            <div class="playlist-grid">
+                @foreach (var playlist in editablePlaylists)
+                {
+                    <partial name="_PlaylistCard" model="playlist" />
+                }
+            </div>
+        }
+    </section>
+
+    @if (viewOnlyPlaylists.Length > 0)
+    {
+        <section class="view-only-section" aria-labelledby="view-only-playlists-heading">
+            <div class="section-heading">
+                <h2 id="view-only-playlists-heading">Followed playlists</h2>
+                <span class="count-pill muted">@viewOnlyPlaylists.Length</span>
+            </div>
+            <p class="text-secondary">These playlists belong to someone else and are not collaborative, so Spotify does not allow this app to reorder them.</p>
+            <div class="playlist-grid">
+                @foreach (var playlist in viewOnlyPlaylists)
+                {
+                    <partial name="_PlaylistCard" model="playlist" />
+                }
+            </div>
+        </section>
+    }
+}
