@@ -19,6 +19,7 @@ public sealed class PlaylistItemDisplayTests
                     Id = "album-id",
                     Images = [new SpotifyImage { Url = "https://image.test/album.jpg" }],
                     Name = "Album name",
+                    ReleaseDate = "2004-03-23",
                     Uri = "spotify:album:album-id"
                 },
                 Artists =
@@ -49,6 +50,7 @@ public sealed class PlaylistItemDisplayTests
         Assert.Equal("First artist, Second artist", item.CreatorName);
         Assert.Equal("Album name", item.AlbumName);
         Assert.Equal("Album artist", item.AlbumArtistName);
+        Assert.Equal("2004-03-23", item.AlbumReleaseDate);
         Assert.Equal("https://image.test/album.jpg", item.AlbumImageUrl);
         Assert.Equal("3:05", item.Duration);
         Assert.Equal(2, item.DiscNumber);

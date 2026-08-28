@@ -345,10 +345,64 @@
 
 .artist-order-modal .modal-header {
   align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(8rem, 1fr) auto;
+  gap: .85rem;
 }
 
 .artist-order-modal .modal-header .eyebrow {
   margin-bottom: .2rem;
+}
+
+.artist-find {
+  position: relative;
+  align-self: center;
+  width: 100%;
+  max-width: 15rem;
+  margin-left: auto;
+}
+
+.artist-find-icon {
+  position: absolute;
+  top: 50%;
+  left: .7rem;
+  z-index: 1;
+  color: #718078;
+  font-size: 1.1rem;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-52%);
+}
+
+.artist-find .form-control {
+  min-height: 2.4rem;
+  padding: .375rem 4.5rem .375rem 2.15rem;
+  border-color: #cbd7cf;
+  border-radius: 999px;
+  background: #f7faf8;
+  font-size: .88rem;
+}
+
+.artist-find .form-control:focus {
+  border-color: #1db954;
+  background: #fff;
+  box-shadow: 0 0 0 .2rem rgba(29, 185, 84, .16);
+}
+
+.artist-find .form-control::-webkit-search-cancel-button {
+  display: none;
+}
+
+.artist-find-status {
+  position: absolute;
+  top: 50%;
+  right: .8rem;
+  color: #557060;
+  font-size: .72rem;
+  font-weight: 700;
+  pointer-events: none;
+  transform: translateY(-50%);
+  white-space: nowrap;
 }
 
 .artist-order-intro {
@@ -398,6 +452,16 @@
 .artist-order-item.dragging {
   border-color: #1db954;
   opacity: .55;
+}
+
+.artist-order-item.artist-search-match {
+  border-color: #a9cfb5;
+  background: #f3fbf5;
+}
+
+.artist-order-item.artist-search-current {
+  border-color: #1db954;
+  box-shadow: 0 0 0 .18rem rgba(29, 185, 84, .16);
 }
 
 .drag-handle {
@@ -628,6 +692,17 @@
 }
 
 @media (max-width: 767.98px) {
+  .artist-order-modal .modal-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .artist-find {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-width: none;
+    margin-left: 0;
+  }
+
   .sort-controls,
   .artist-order-intro {
     align-items: stretch;

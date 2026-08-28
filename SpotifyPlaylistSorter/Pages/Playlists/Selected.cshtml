@@ -110,6 +110,18 @@
                                 <p class="eyebrow">Artist groups</p>
                                 <h2 class="modal-title fs-4" id="artistOrderModalLabel">Choose the artist order</h2>
                             </div>
+                            <div class="artist-find">
+                                <label class="visually-hidden" for="artist-find-input">Find artist</label>
+                                <span class="artist-find-icon" aria-hidden="true">⌕</span>
+                                <input class="form-control"
+                                       id="artist-find-input"
+                                       type="search"
+                                       placeholder="Find artist"
+                                       autocomplete="off"
+                                       aria-describedby="artist-find-status"
+                                       title="Press Enter for the next match; Shift+Enter for the previous match" />
+                                <span class="artist-find-status" id="artist-find-status" aria-live="polite"></span>
+                            </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">

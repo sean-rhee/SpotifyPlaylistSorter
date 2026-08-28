@@ -16,6 +16,8 @@ public sealed record PlaylistItemDisplay
 
     public string? AlbumArtistName { get; init; }
 
+    public string? AlbumReleaseDate { get; init; }
+
     public string? AlbumImageUrl { get; init; }
 
     public string? SpotifyUrl { get; init; }
@@ -87,6 +89,7 @@ public sealed record PlaylistItemDisplay
             CreatorName = creatorName,
             AlbumName = item.Album?.Name,
             AlbumArtistName = albumArtistName ?? primaryArtistName ?? creatorName,
+            AlbumReleaseDate = item.Album?.ReleaseDate,
             AlbumImageUrl = item.Album?.Images.FirstOrDefault()?.Url,
             SpotifyUrl = item.ExternalUrls.Spotify,
             Duration = FormatDuration(item.DurationMs),
