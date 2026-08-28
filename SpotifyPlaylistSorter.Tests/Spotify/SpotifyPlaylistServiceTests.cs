@@ -1,4 +1,5 @@
 using SpotifyPlaylistSorter.Spotify;
+using SpotifyPlaylistSorter.Spotify.Authentication;
 
 namespace SpotifyPlaylistSorter.Tests.Spotify;
 
@@ -15,9 +16,9 @@ public sealed class SpotifyPlaylistServiceTests
                 Page([Playlist("third")], offset: 2, next: null)
             ]
         };
-        var service = new SpotifyPlaylistService(apiClient);
+        var service = new SpotifyPlaylistService(apiClient, new FakeSpotifyTokenService());
 
-        var playlists = await service.GetCurrentUserPlaylistsAsync("token");
+        var playlists = await service.GetCurrentUserPlaylistsAsync();
 
         Assert.Equal(["first", "second", "third"], playlists.Select(playlist => playlist.Id));
         Assert.Equal([0, 2], apiClient.PlaylistOffsets);
@@ -34,9 +35,9 @@ public sealed class SpotifyPlaylistServiceTests
                 ItemPage([], offset: 1, next: "unexpected-next-page")
             ]
         };
-        var service = new SpotifyPlaylistService(apiClient);
+        var service = new SpotifyPlaylistService(apiClient, new FakeSpotifyTokenService());
 
-        var items = await service.GetPlaylistItemsAsync("token", "playlist-id");
+        var items = await service.GetPlaylistItemsAsync("playlist-id");
 
         Assert.Single(items);
         Assert.Equal([0, 1], apiClient.ItemOffsets);
@@ -125,5 +126,11 @@ public sealed class SpotifyPlaylistServiceTests
             ItemOffsets.Add(offset);
             return Task.FromResult(ItemPages[_itemPageIndex++]);
         }
+    }
+
+    private sealed class FakeSpotifyTokenService : ISpotifyTokenService
+    {
+        public Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult("token");
     }
 }
