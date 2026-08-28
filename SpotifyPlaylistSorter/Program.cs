@@ -1,7 +1,10 @@
+using SpotifyPlaylistSorter.Spotify;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+builder.Services.AddSpotifyApi();
 
 var app = builder.Build();
 
