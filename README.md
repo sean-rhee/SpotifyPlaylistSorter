@@ -1,6 +1,6 @@
 # Spotify Playlist Sorter
 
-A small ASP.NET Core web app that reorders your Spotify playlists by artist and album, something the Spotify app doesn't do on its own.
+A small ASP.NET Core web app that reorders your Spotify playlists by artist and album.
 
 Sign in with Spotify, pick a playlist, choose how you want it organized, preview the result side by side with the current order, then either save a sorted copy or update the original playlist in place.
 
